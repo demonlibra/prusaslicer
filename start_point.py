@@ -1,53 +1,64 @@
 #!/usr/bin/env python3
 
-move_old = "G0 X20 Y20 Z0 F1200 ; MOVE TO START POSITION"				# Шаблон поиска строки перемещения в начальную точку
-																		# Такая же строчка должна быть в стартовом коде PrusaSlicer
+# ----------------------------- Параметры ------------------------------
 
-import sys
-import os
-import platform # библиотека для получения типа операционной системы
+marker = "MOVE TO START POSITION"							# Шаблон поиска строки перемещения в начальную точку
+											# Такой же маркер должен быть в стартовом коде PrusaSlicer
+											# Общий синтаксис строки должен быть следующим:
+											# G0 X20 Y20 Z0 F1200 ; MOVE TO START POSITION
+# ======================================================================
 
-if len(sys.argv) > 1:													# Для отладки
-	file_input = str(sys.argv[1])										# Получение пути к файлу с g-кодом
-	file_output = file_input											# Для отладки
+import sys										# Иморт модуля sys
+											# sys.argv - список аргументов командной строки, которые причастны к сценарию
+											# sys.argv[0] - путь к файлу сценария
+											# sys.argv[1] - путь к файлу с g-кодом
+																		
+if len(sys.argv) > 1:								# Проверка получения более одного аргумента
+	file_input = str(sys.argv[1])						# Получение пути к файлу с g-кодом
+	file_output = file_input							# При запуске из PrusaSlicer записывать данные в тот же файл
 	
-else:																	# Для отладки и запуска сценария из терминала (без PrusaSlicer) 
-	file_input = "/tmp/.20150.gcode"
-	file_output = file_input + ".new"
+else:											# При запуске сценария из терминала (только для отладки) 
+	file_input = "/home/demonlibra/test.gcode"				# Путь к тестовому файлу (только для отладки)
+	file_output = file_input + ".new"						# Путь к файлу для сохранения результата (только для отладки)
 
-with open(file_input) as f:												# Открытие файла
-	for line in f:														# Построчная обработка файла
-		if ("move to first skirt point" or "move to first brim point") in line:	# Поиск по шаблону
-			start_point_x = line.split(' ')[1]							# Разбиваем строку. Разделитель " ". Первый элемент X...
-			start_point_x = start_point_x[1:]							# Получение координаты X
+with open(file_input) as file:							# Открытие файла с g-кодом
+
+	for line in file:								# Построчная обработка файла
+
+		if marker in line:							# Если строка содержит маркер
+			move_old = line						# Сохраняем старую строку для последующей замены
+
+			speed = line[line.find("F")+1:]				# Получаем часть строки от символа F
+			speed = speed.split(' ')[0]					# Разбиваем строку. Разделитель " ". Первый элемент - скорость F.
+
+			start_point_z = line[line.find("Z")+1:]			# Получаем часть строки от символа Z
+			start_point_z = start_point_z.split(' ')[0]		# Разбиваем строку. Разделитель " ". Первый элемент - координата Z.
+
+		if ("move to first skirt point" or "move to first brim point") in line:	# Поиск первой строки юбки или каймы
+			start_point_x = line[line.find("X")+1:]			# Получаем часть строки от символа X
+			start_point_x = start_point_x.split(' ')[0]		# Разбиваем строку. Разделитель " ". Первый элемент - координата X.
 			
-			start_point_y = line.split(' ')[2]							# Разбиваем строку. Разделитель " ". Второй элемент Y...
-			start_point_y = start_point_y[1:]							# Получение координаты Y
+			start_point_y = line[line.find("Y")+1:]			# Получаем часть строки от символа Y
+			start_point_y = start_point_y.split(' ')[0]		# Разбиваем строку. Разделитель " ". Первый элемент - координата Y.
 
-			speed_fast = line.split(' ')[3]								# Разбиваем строку. Разделитель " ". Третий элемент F...
-			speed_fast = speed_fast[1:]									# Получение скорости F
-			
-			# Новая строка
-			move_new = "G1 X" + str(start_point_x) + " Y" + str(start_point_y) + " F" + str(speed_fast) + " ; MOVE TO START POSITION POST-PROCESSING"
-			break														# Если совпадение найдено, завершить обработку строк файла
+			break								# Если первая команда юбки или каймы найдена, завершить обработку строк файла
 
-print ("file_input = " + file_input)									# Вывод данных в терминал
+
+# Новая строка перемещения в начальную координату печати
+move_new = "G1 X" + str(start_point_x) + " Y" + str(start_point_y) + " Z" + str(start_point_z) + " F" + str(speed) + " ; MOVE TO START POSITION POST-PROCESSING\n"
+
+print ("file_input = " + file_input)						# Вывод данных в терминал для отладки
+print ("file_output = " + file_output)
 print ("start_point_x = " + str(start_point_x))
 print ("start_point_y = " + str(start_point_y))
-print ("speed_fast = " + str(speed_fast))
+print ("start_point_z = " + str(start_point_z))
+print ("speed = " + str(speed))
 print (move_new)
 
-with open (file_input, 'r') as f:										# Открываем файл для чтения
-	old_data = f.read()													# Считываем содержимое файла в память
+with open (file_input, 'r') as file:						# Открываем оригинальный файл c g-кодом для чтения
+	old_data = file.read()							# Считываем содержимое файла в память
 
-new_data = old_data.replace(move_old, move_new)							# Заменяем строку
+new_data = old_data.replace(move_old, move_new)					# Заменяем строку перемещения в начальную координату печати
 
-with open (file_output, 'w') as f:										# Открываем файл для записи
-	f.write(new_data)													# Записываем результат в файл
-	f.write(new_data)
-
-# Вывод уведомления через notify-send в Linux
-#command = f'''
-#notify-send {123} {file_output}
-#'''
-#os.system(command)
+with open (file_output, 'w') as file:						# Открываем файл c g-кодом для записи
+	file.write(new_data)								# Записываем результат в файл
