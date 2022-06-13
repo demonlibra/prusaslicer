@@ -10,10 +10,10 @@ marker = "MOVE TO START POSITION"										# Шаблон поиска стро�
 # Для работы сценария необходимо в профиле PrusaSlicer включить функцию
 # Настройки печати - Выходные параметры - Подробный G-код.
 
-debug = 0																# 1 - сохранять данные отладки в файл, 0 - не сохранять
+save_debug_log = 1														# 1 - сохранять данные отладки в файл, 0 - не сохранять
 test_gcode_input = "/home/demonlibra/test.gcode"						# Путь тестового файла с g-кодом при запуске без PrusaSlicer
 test_gcode_output = "/home/demonlibra/test.gcode.new"					# Путь сохранения результата постобработки g-кода
-path_debug = "/home/demonlibra/startpoint_log"							# Путь сохранения данных отладки
+path_debug_log = "/home/demonlibra/startpoint_log"						# Путь сохранения данных отладки
 
 # ======================================================================
 
@@ -78,22 +78,23 @@ with open (file_output, 'w') as file:									# Открываем файл c g-
 # ======================================================================
 
 # ------------------------------ Отладка -------------------------------
+debug_text = ""
+debug_text = debug_text + "file_input = " + file_input + "\n"
+debug_text = debug_text + "file_output = " + file_output + "\n"
+debug_text = debug_text + "start_point_x = " + str(start_point_x) + "\n"
+debug_text = debug_text + "start_point_y = " + str(start_point_y) + "\n"
+debug_text = debug_text + "start_point_z = " + str(start_point_z) + "\n"
+debug_text = debug_text + "speed = " + str(speed) + "\n"
+debug_text = debug_text + "move_old = " + move_old + "\n"
+debug_text = debug_text + "move_new = " + move_new + "\n"
+debug_text = debug_text + "move_skirt_brim = " + move_skirt_brim + "\n"
 
-print ("file_input = " + file_input)									# Вывод данных в терминал для отладки
-print ("file_output = " + file_output)
-print ("start_point_x = " + str(start_point_x))
-print ("start_point_y = " + str(start_point_y))
-print ("start_point_z = " + str(start_point_z))
-print ("speed = " + str(speed))
-print ("move_old = " + move_old)
-print ("move_new = " + move_new)
+debug_text = debug_text + "LAYER_HEIGHT = " + str(getenv('SLIC3R_LAYER_HEIGHT')) + "\n"
 
-print ("move_skirt_brim = " + move_skirt_brim)
+print (debug_text)														# Вывод данных в терминал для отладки
 
-if debug == 1:
-	with open(path_debug, "w") as file:
-		file.write(str(getenv('SLIC3R_PP_OUTPUT_NAME')))
-		file.write("\n")
-		file.write(str(getenv('SLIC3R_LAYER_HEIGHT')))
+if save_debug_log == 1:													# Если save_debug_log == 1
+	with open(path_debug_log, "w") as file:								# Открыть/создать файл
+		file.write(debug_text)											# Сохранить debug_text в файл
 
 # ======================================================================
