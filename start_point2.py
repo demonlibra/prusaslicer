@@ -3,12 +3,13 @@
 # ------------------------------ Описание ------------------------------
 
 '''
-Подробности на форуме UNI
-https://uni3d.store/viewtopic.php?p=5370#p5370
 
 Сценарий подставляет координаты начальной точки печати юбки или каймы,
 в стартовый код вместо строки, содержащей аргумент --marker
 G0 X20 Y20 Z0.0 F1200 ; MOVE TO START POSITION
+
+Подробности в теме "Постобработка G-кода в PrusaSlicer" форума UNI:
+https://uni3d.store/viewtopic.php?t=1041
 
 Для работы сценария необходимо в профиле PrusaSlicer включить функцию:
 Настройки печати - Выходные параметры - Подробный G-код.
@@ -53,7 +54,7 @@ with open(file_input) as file:											# Открытие файла с g-ко
 			start_point_z = line[line.find("Z"):line.find(";")]			# Получаем часть строки от символа Z до точки с запятой
 			start_point_z = start_point_z.split(' ')[0]					# Разбиваем строку. Разделитель " ". Первый элемент - координата Z.
 
-		if ("move to first skirt point" or "move to first brim point") in line:	# Поиск первой строки юбки или каймы
+		if "move to first skirt point" in line or "move to first brim point" in line:	# Поиск первой строки юбки или каймы
 			move_skirt_brim = line
 			start_point_x = line[line.find("X"):line.find(";")]			# Получаем часть строки от символа X до точки с запятой
 			start_point_x = start_point_x.split(' ')[0]					# Разбиваем строку. Разделитель " ". Первый элемент - координата X.
@@ -91,6 +92,8 @@ debug_text = debug_text + "move_new = " + move_new + "\n"
 debug_text = debug_text + "move_skirt_brim = " + move_skirt_brim + "\n"
 
 debug_text = debug_text + "LAYER_HEIGHT = " + str(getenv('SLIC3R_LAYER_HEIGHT')) + "\n" # Получение параметра из профиля PrusaSlicer
+
+print (debug_text)														# Вывод информации отладки в терминал
 
 if args.debug:
 	with open(file_input + ".log", "w") as file:						# Открыть/создать файл
