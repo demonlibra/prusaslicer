@@ -21,6 +21,8 @@ https://uni3d.store/viewtopic.php?t=1041
 --start=...			Начальное значение длины ретракта, мм (по умолчанию 0).
 --step=...			Шаг изменения длины ретракта, мм (по умолчанию 0.2)
 --step_height=...	Высота печати с одной длиной ретракта, мм (по умолчанию 5)
+--step_layers=...	Количество слоёв с одной длиной ретракта, мм (по умолчанию выключено)
+					Если указать step_layers, не будет использоваться step_height
 --speed=...			Скорость ретракта, мм/сек (по умолчанию 20)
 --z_hope=...		Подъём головы при ретракте, мм (по умолчанию 0)
 --lerdge			Указать для платы Lerdge (добавляет команду M208)
@@ -39,6 +41,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--start', default='0', help='Начальное значение длины ретракта, мм')
 parser.add_argument('--step', default='0.2', help='Шаг изменения длины ретракта, мм')
 parser.add_argument('--step_height', default='5', help='Высота печати с одной длиной ретракта, мм')
+parser.add_argument('--step_layers', default='0', help='Количество слоёв с одной длиной ретракта, мм')
 parser.add_argument('--speed', default='20', help='Скорость ретракта, мм/сек')
 parser.add_argument('--z_hope', default='0', help='Подъём головы при ретракте, мм')
 parser.add_argument('--lerdge', action='store_true', help='Указать для прошивки Lerdge')
@@ -47,20 +50,22 @@ args = parser.parse_args()
 
 file_input=args.file[0]													# Извлечение аргумента, путь к временному g-коду
 if len(args.file) > 1:													# Если аргументов 2,
-	file_output=args.file[1]												# использовать 2-й для отладки
+	file_output=args.file[1]												# использовать 2-й аргумент для отладки
 else:
 	file_output=file_input													# иначе записывать результат в исходный файл
 
 print("file_input = " + file_input)
 print("file_output = " + file_output)
 print("step_height = " + str(args.step_height))
+print("step_layers = " + str(args.step_layers))
 print("start = " + str(args.start))
 print("step = " + str(args.step))
 print("Lerdge = " + str(args.lerdge))
 
 # ------------------- Извлечение данных из g-кода ----------------------
 
-marker_z=";Z:"															# Метка текущей высоты Z
+marker_z = ";Z:"														# Метка текущей высоты Z
+marker_layer = "move to next layer"										# Метка смены слоя
 
 with open(file_input) as file:
 
@@ -80,23 +85,35 @@ with open(file_input) as file:											# Открываем файл для ч
 
 index_line = 0															# Счётчик строк
 index_step = 1															# Счётчик шагов
+flag = False															# Флаг вставки кода
 
 for line in lines:														# Обработка списка из строк файла
 
-	if marker_z in line:												# Если строка содержит маркер высоты
+	if (int(args.step_layers) == 0) and (marker_z in line):				# Если строка содержит маркер высоты
+		height = float(line[len(marker_z):])								# Текущая высота
+		height_search = float(index_step * float(args.step_height))			# Искомая высота
+		if height == height_search:											# Если искомая высота равна текущей
+			flag = True															# Установить флаг
+		
+	elif (int(args.step_layers) != 0) and (marker_layer in line):		# Если строка содержит маркер номера слоя
+		layer = int(line[line.find(marker_layer)+len(marker_layer)+2:-2])	# Текущая слой
+		layer_search = index_step * int(args.step_layers)					# Искомый номер слоя
+		if layer == layer_search:											# Если искомый слой равен текущему
+			flag = True															# Установить флаг
+			print(layer_search)
 
-		height = float(line[len(marker_z):])							# Текущая высота
+	if flag == True:													# Если флаг установлен
 
-		if height == float(index_step * float(args.step_height)):		# Если достигнут очередной шаг высоты
-			if args.lerdge:												# Для прошивки Lerdge
-				new_line = "M207 S" + str(round(float(args.start)+index_step*float(args.step),2)) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Параметр ретракта\n"
-				new_line += "M208 S" + str(round(float(args.start)+index_step*float(args.step),2)) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Параметр возврата\n"
-			else:														# Для других прошивок
-				new_line = "M207 S" + str(round(float(args.start)+index_step*float(args.step),2)) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Параметр ретракта\n"
-				
-			print(line + new_line)
-			lines[index_line] = line + new_line							# Замена строки
-			index_step += 1												# Увеличение счётчика шагов
+		if args.lerdge:														# Формирование кода для прошивки Lerdge
+			new_line = "M207 S" + str(round(float(args.start)+index_step*float(args.step),2)) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Параметр ретракта\n"
+			new_line += "M208 S" + str(round(float(args.start)+index_step*float(args.step),2)) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Параметр возврата\n"
+		else:																# Формирование кода для других прошивок
+			new_line = "M207 S" + str(round(float(args.start)+index_step*float(args.step),2)) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Параметр ретракта\n"
+
+		print(line + new_line)
+		lines[index_line] = line + new_line								# Замена строки
+		index_step += 1													# Увеличение счётчика шагов
+		flag = False													# Сброс флага
 
 	index_line += 1														# Увеличение счётчика строк
 
