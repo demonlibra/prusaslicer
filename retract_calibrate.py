@@ -38,6 +38,9 @@ https://uni3d.store/viewtopic.php?t=1041
 	--lerdge			Указать для платы Lerdge (добавляет команду M208)
 						Не использовать для Marlin, Klipper, RRF, ...
 
+	--klipper			Указать для прошивки Klipper (добавляет команду SET_RETRACTION)
+						Не использовать для Lerdge, Marlin, RRF, ...
+
 '''
 
 # -------------------------- Импорт библиотек --------------------------
@@ -58,6 +61,7 @@ parser.add_argument('--step_layers', default='0', help='Количество с�
 parser.add_argument('--speed', default='20', help='Скорость ретракта, мм/сек')
 parser.add_argument('--z_hope', default='0', help='Подъём головы при ретракте, мм')
 parser.add_argument('--lerdge', action='store_true', help='Указать для прошивки Lerdge')
+parser.add_argument('--klipper', action='store_true', help='Указать для прошивки Klipper')
 parser.add_argument('file', help="Путь к g-коду", nargs="+")
 args = parser.parse_args()
 
@@ -74,6 +78,7 @@ print("step_layers = " + str(args.step_layers))
 print("start = " + str(args.start))
 print("step = " + str(args.step))
 print("Lerdge = " + str(args.lerdge))
+print("Klipper = " + str(args.klipper))
 
 # ------------------- Извлечение данных из g-кода ----------------------
 
@@ -120,6 +125,10 @@ for line in lines:														# Обработка списка из стро�
 		if args.lerdge:														# Формирование кода для прошивки Lerdge
 			new_line = "M207 S" + str(round(float(args.start)+index_step*float(args.step),2)) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Параметр ретракта\n"
 			new_line += "M208 S" + str(round(float(args.start)+index_step*float(args.step),2)) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Параметр возврата\n"
+
+		elif args.klipper:
+			new_line = "SET_RETRACTION RETRACT_LENGTH=" + str(round(float(args.start)+index_step*float(args.step),2)) + " RETRACT_SPEED=" + str(int(args.speed)) + " ; Параметр ретракта\n"
+
 		else:																# Формирование кода для других прошивок
 			new_line = "M207 S" + str(round(float(args.start)+index_step*float(args.step),2)) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Параметр ретракта\n"
 
@@ -135,9 +144,12 @@ for line in lines:														# Обработка списка из стро�
 # ------------------- Вставка начальных параметров ---------------------
 
 if args.lerdge:
-	new_line = "; ----- Калибровка ретракта -----\n"
+	new_line = "; ----- Калибровка ретракта - Lerdge -----\n"
 	new_line += "M207 S" + str(args.start) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Установка начальных параметров ретракта\n"
 	new_line += "M208 S" + str(args.start) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Установка начальных параметров возврата\n\n"
+elif args.klipper:
+	new_line = "; ----- Калибровка ретракта - Klipper -----\n"
+	new_line += "SET_RETRACTION RETRACT_LENGTH=" + str(args.start) + " RETRACT_SPEED=" + str(int(args.speed)) + " ; Установка начальных параметров ретракта\n;\n"
 else:
 	new_line = "; ----- Калибровка ретракта -----\n"
 	new_line += "M207 S" + str(args.start) + " F" + str(int(args.speed)*60) + " Z" + args.z_hope + " ; Установка начальных параметров ретракта\n;\n"
