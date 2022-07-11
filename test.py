@@ -1,4 +1,7 @@
 #!/usr/bin/python3
 
 import sys
-print(sys.version)
+
+error = True
+if error:
+	sys.exit("\n!!! Warning !!!\n\nSomething wrong.\nCheck here and there.")

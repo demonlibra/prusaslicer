@@ -37,7 +37,7 @@ https://uni3d.store/viewtopic.php?t=1041
 	--lerdge			Указать для платы Lerdge (добавляет команду M208)
 						Не использовать для Marlin, Klipper, RRF, ...
 
-	--klipper			Указать для прошивки Klipper (вместо M207 добавляет команду SET_RETRACTION)
+	--klipper			Указать для прошивки Klipper (добавляет команду SET_RETRACTION)
 						Не использовать для Lerdge, Marlin, RRF, ...
 
 '''

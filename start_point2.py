@@ -14,62 +14,93 @@ https://uni3d.store/viewtopic.php?t=1041
 Для работы сценария необходимо в профиле PrusaSlicer включить функцию:
 Настройки печати - Выходные параметры - Подробный G-код.
 
-При использовании аргумента --debug сохраняется файл отладки.
+Аргументы:
+--marker 			Маркер для поиска строки перемещения в начальную позицию
+--marker_retract	Маркер для поиска строки параметров ретракта прошивки (G10/G11)
+--debug				Сохраняет файл отладки
+
 '''
 
 # -------------------------- Импорт библиотек --------------------------
 
-from os import getenv													# Импорт модуля для получения значений переменных окружения
-																		# Необходимо для получения параметров профиля PrusaSlicer
-
+import sys																# Импорт библиотеки sys
 import argparse															# Импорт модуля обработки аргументов командной строки
+from os import getenv
 
-# ======================================================================
-
-# ----------------------------- Сценарий -------------------------------
+# ---------------------------- Аргуметны -------------------------------
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--marker', default='MOVE TO START POSITION', help='Маркер для поиска строки перемещения в начальную позицию')
+parser.add_argument('--marker_retract', default='Set retract', help='Маркер для поиска строки параметров ретракта прошивки (G10/G11)')
 parser.add_argument('--debug', action='store_true', help='Сохраняет файл отладки')
-parser.add_argument('file', help="Путь к g-коду")
+parser.add_argument('file', help="Путь к g-коду", nargs="+")
 args = parser.parse_args()
 
-file_input=args.file
+file_input=args.file[0]													# Извлечение аргумента, путь к временному g-коду
+if len(args.file) > 1:													# Если аргументов 2,
+	file_output=args.file[1]												# использовать 2-й аргумент для отладки
+else:
+	file_output=file_input													# иначе записывать результат в исходный файл
+
+# ----------------------- Извлечение параметров ------------------------
 
 with open(file_input) as file:											# Открытие файла с g-кодом
 
 	for line in file:													# Построчная обработка файла
 
 		if args.marker in line:											# Если строка содержит маркер
-			move_old = line												# Сохраняем старую строку для последующей замены
+			move_old = line													# Сохраняем старую строку для последующей замены
 
-			speed = line[line.find("F"):line.find(";")]					# Получаем часть строки от символа F до точки с запятой
-			speed = speed.split(' ')[0]									# Разбиваем строку. Разделитель " ". Первый элемент - скорость F.
+			speed = line[line.find("F")+1:line.find(";")]					# Получаем часть строки от символа F до точки с запятой
+			speed = speed.split(' ')[0]										# Разбиваем строку. Разделитель " ". Первый элемент - скорость F.
 
-			start_point_z = line[line.find("Z"):line.find(";")]			# Получаем часть строки от символа Z до точки с запятой
-			start_point_z = start_point_z.split(' ')[0]					# Разбиваем строку. Разделитель " ". Первый элемент - координата Z.
+			start_point_z = line[line.find("Z")+1:line.find(";")]			# Получаем часть строки от символа Z до точки с запятой
+			start_point_z = start_point_z.split(' ')[0]						# Разбиваем строку. Разделитель " ". Первый элемент - координата Z.
+
+		if args.marker_retract in line:									# Если строка содержит маркер ретрата
+			z_hop = line[line.find("Z")+1:line.find(";")]
+			z_hop = z_hop.split(' ')[0]
+			z_hop = float(z_hop)
 
 		if "move to first skirt point" in line or "move to first brim point" in line:	# Поиск первой строки юбки или каймы
 			move_skirt_brim = line
-			start_point_x = line[line.find("X"):line.find(";")]			# Получаем часть строки от символа X до точки с запятой
-			start_point_x = start_point_x.split(' ')[0]					# Разбиваем строку. Разделитель " ". Первый элемент - координата X.
+			start_point_x = line[line.find("X")+1:line.find(";")]			# Получаем часть строки от символа X до точки с запятой
+			start_point_x = start_point_x.split(' ')[0]						# Разбиваем строку. Разделитель " ". Первый элемент - координата X.
 			
-			start_point_y = line[line.find("Y"):line.find(";")]			# Получаем часть строки от символа Y до точки с запятой
-			start_point_y = start_point_y.split(' ')[0]					# Разбиваем строку. Разделитель " ". Первый элемент - координата Y.
+			start_point_y = line[line.find("Y")+1:line.find(";")]			# Получаем часть строки от символа Y до точки с запятой
+			start_point_y = start_point_y.split(' ')[0]						# Разбиваем строку. Разделитель " ". Первый элемент - координата Y.
 
 			break														# Если первая команда юбки/каймы найдена, завершить обработку строк файла
 
+# ------------------ Проверка полученных параметров --------------------
+
+try:
+	print(int(speed))
+	print(float(start_point_x))
+	print(float(start_point_y))
+	print(float(start_point_z))
+except:																	# При ошибке завершаем сценарий и выводим сообщение
+	sys.exit("\n!!! Внимание !!!\nНе найдены координаты начала печати.")
+
+# -------------------------- Изменение кода ----------------------------
 
 # Новая строка перемещения в начальные координаты печати
-move_new = "G1 " + str(start_point_x) + " " + str(start_point_y) + " " + str(start_point_z) + " " + str(speed) + " ; MOVE TO START POSITION POST-PROCESS\n"
+move_new = "G1 X" + str(start_point_x) + " Y" + str(start_point_y) + " Z" + str(start_point_z) + " F" + str(speed) + " ; MOVE TO START POSITION POST-PROCESS\n"
 
 with open (file_input, 'r') as file:									# Открываем оригинальный файл c g-кодом для чтения
 	gcode = file.read()													# Считываем содержимое файла в память
 
+try:
+	if z_hop > 0:														# Если ретракт выполняется с опусканием стола
+		height_first_layer = getenv('SLIC3R_FIRST_LAYER_HEIGHT')		# Добавить команду опускания для выборки люфта
+		gcode = gcode.replace(args.marker_retract, args.marker_retract + "\n" + "G1 Z" + str(float(height_first_layer)+z_hop) + " ; z-hop", 1)
+except:
+	print()
+
 gcode = gcode.replace(move_old, move_new, 1)							# Заменяем строку перемещения в начальные координаты печати
 gcode = gcode.replace("G10 ; retract\n" + move_skirt_brim + "G11 ; unretract\n", move_skirt_brim, 1)	# Удаление ретракта вокруг начала каймы/юбки
 
-with open (file_input, 'w') as file:									# Открываем файл c g-кодом для записи
+with open (file_output, 'w') as file:									# Открываем файл c g-кодом для записи
 	file.write(gcode)													# Записываем результат в файл
 
 # ======================================================================
@@ -85,8 +116,6 @@ debug_text = debug_text + "speed = " + str(speed) + "\n"
 debug_text = debug_text + "move_old = " + move_old + "\n"
 debug_text = debug_text + "move_new = " + move_new + "\n"
 debug_text = debug_text + "move_skirt_brim = " + move_skirt_brim + "\n"
-
-debug_text = debug_text + "LAYER_HEIGHT = " + str(getenv('SLIC3R_LAYER_HEIGHT')) + "\n" # Получение параметра из профиля PrusaSlicer
 
 print (debug_text)														# Вывод информации отладки в терминал
 
