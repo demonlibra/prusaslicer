@@ -17,7 +17,6 @@ https://uni3d.store/viewtopic.php?t=1041
 Аргументы:
 --marker 			Маркер для поиска строки перемещения в начальную позицию
 --marker_retract	Маркер для поиска строки параметров ретракта прошивки (G10/G11)
---debug				Сохраняет файл отладки
 
 '''
 
@@ -32,7 +31,6 @@ from os import getenv
 parser = argparse.ArgumentParser()
 parser.add_argument('--marker', default='MOVE TO START POSITION', help='Маркер для поиска строки перемещения в начальную позицию')
 parser.add_argument('--marker_retract', default='Set retract', help='Маркер для поиска строки параметров ретракта прошивки (G10/G11)')
-parser.add_argument('--debug', action='store_true', help='Сохраняет файл отладки')
 parser.add_argument('file', help="Путь к g-коду", nargs="+")
 args = parser.parse_args()
 
@@ -95,7 +93,7 @@ try:
 		height_first_layer = getenv('SLIC3R_FIRST_LAYER_HEIGHT')		# Добавить команду опускания для выборки люфта
 		gcode = gcode.replace(args.marker_retract, args.marker_retract + "\n" + "G1 Z" + str(float(height_first_layer)+z_hop) + " ; z-hop", 1)
 except:
-	print()
+	print("!!! Значение z-hop не найдено !!!")
 
 gcode = gcode.replace(move_old, move_new, 1)							# Заменяем строку перемещения в начальные координаты печати
 gcode = gcode.replace("G10 ; retract\n" + move_skirt_brim + "G11 ; unretract\n", move_skirt_brim, 1)	# Удаление ретракта вокруг начала каймы/юбки
@@ -118,9 +116,5 @@ debug_text = debug_text + "move_new = " + move_new + "\n"
 debug_text = debug_text + "move_skirt_brim = " + move_skirt_brim + "\n"
 
 print (debug_text)														# Вывод информации отладки в терминал
-
-if args.debug:
-	with open(file_input + ".log", "w") as file:						# Открыть/создать файл
-		file.write(debug_text)											# Сохранение данных отладки в файл
 
 # ======================================================================
