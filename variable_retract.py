@@ -92,11 +92,13 @@ for line in lines:																		# Обработка списка из ст�
 				
 				break
 
-		#print('x1='+str(x1) + ' y1='+str(y1) + ' x2='+str(x2) + ' y2='+str(y2))
+		print(index_line)
+		print('x1='+str(x1) + ' y1='+str(y1) + ' x2='+str(x2) + ' y2='+str(y2))
 
 		move_length = ((x1-x2)**2 + (y1-y2)**2)**0.5								# Длина перемещения
 		move_length = round(move_length,1)
-		print (move_length)
+		
+		print('move_length=' + str(move_length))
 	
 		if move_length > float(args.max_move):
 			retract_length = float(args.max_retract)
@@ -110,16 +112,16 @@ for line in lines:																		# Обработка списка из ст�
 		print('retract_length=' + str(retract_length))
 			
 		if args.firmware.casefold() == 'lerdge':									# Формирование кода для прошивки Lerdge
-			new_line = "M207 S" + str(retract_length) + " ; Параметр ретракта\n"
+			new_line = "M207 S" + str(retract_length) + " ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
 			new_line += "M208 S" + str(retract_length) + " ; Параметр возврата\n"
 
 		elif args.firmware.casefold() == 'klipper':								# Формирование кода для прошивки Klipper
-			new_line = "SET_RETRACTION RETRACT_LENGTH=" + str(retract_length) + " ; Параметр ретракта\n"
+			new_line = "SET_RETRACTION RETRACT_LENGTH=" + str(retract_length) + " ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
 
 		else:																					# Формирование кода для других прошивок
-			new_line = "M207 S" + str(retract_length) + " ; Параметр ретракта\n"
+			new_line = "M207 S" + str(retract_length) + " ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
 
-		print(new_line+line)
+		print(new_line)
 		lines[index_line] = new_line + line											# Замена строки
 
 	index_line += 1																		# Увеличение счётчика строк
