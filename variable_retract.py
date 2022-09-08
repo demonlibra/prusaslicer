@@ -62,70 +62,85 @@ index_line = 0																				# Счётчик строк
 
 for line in lines:																		# Обработка списка из строк файла
 
-	if "G10 ; retract" in line:														# Если строка содержит команду ретракта
+	if line.startswith('G10'):															# Если строка содержит команду ретракта
+		print(index_line)
 		i = 0
 		while True:																			# Поиск последней команды перемещения 
 			i += 1
-			move = lines[index_line-i]
-			if ('G1' in move or 'G0' in move) and 'X' in move and 'Y' in move:
-				#print(move)
+			try:
+				search = lines[index_line-i]
+			except Exception:
+				x1=''
+				y1=''
+				break
+
+			if (search.startswith('G1') or search.startswith('G0')) and 'X' in search and 'Y' in search:
+				move = search
+				print(move)
 				x1 = move[move.find("X")+1:]
 				x1 = x1.split(' ')[0]
 				x1 = float(x1)
 				y1 = move[move.find("Y")+1:]
 				y1 = y1.split(' ')[0]
 				y1 = float(y1)
-				
+				move = ''
 				break
 
 		while True:																			# Поиск следующей команды перемещения 
 			i += 1
-			move = lines[index_line+i]
-			if ('G1' in move or 'G0' in move) and 'X' in move and 'Y' in move:
-				#print(move)
+			try:
+				search = lines[index_line+i]
+			except Exception:
+				x2=''
+				y2=''
+				break
+
+			if (search.startswith('G1') or search.startswith('G0')) and 'X' in search and 'Y' in search:
+				move = search
+				print(move)
 				x2 = move[move.find("X")+1:]
 				x2 = x2.split(' ')[0]
 				x2 = float(x2)
 				y2 = move[move.find("Y")+1:]
 				y2 = y2.split(' ')[0]
 				y2 = float(y2)
-				
+				move = ''
 				break
 
-		print(index_line)
-		print('x1='+str(x1) + ' y1='+str(y1) + ' x2='+str(x2) + ' y2='+str(y2))
+		if x1 and x2 and y1 and y2:
+			print('x1='+str(x1) + ' y1='+str(y1) + ' x2='+str(x2) + ' y2='+str(y2))
 
-		move_length = ((x1-x2)**2 + (y1-y2)**2)**0.5								# Длина перемещения
-		move_length = round(move_length,1)
+			move_length = ((x1-x2)**2 + (y1-y2)**2)**0.5								# Длина перемещения
+			move_length = round(move_length,1)
+			
+			print('move_length=' + str(move_length))
 		
-		print('move_length=' + str(move_length))
-	
-		if move_length > float(args.max_move):
-			retract_length = float(args.max_retract)
-		elif move_length < float(args.min_move):
-			retract_length = float(args.min_retract)
-		else:
-			# (y - y1) / (y2 - y1) = (x - x1) / (x2 - x1)						# Уравнение прямой
-			retract_length = (float(args.max_retract)-float(args.min_retract)) * (move_length-float(args.min_move)) / (float(args.max_move)-float(args.min_move)) + float(args.min_retract)
-			retract_length = round(retract_length, 1)
+			if move_length > float(args.max_move):
+				retract_length = float(args.max_retract)
+			elif move_length < float(args.min_move):
+				retract_length = float(args.min_retract)
+			else:
+				# (y - y1) / (y2 - y1) = (x - x1) / (x2 - x1)						# Уравнение прямой
+				retract_length = (float(args.max_retract)-float(args.min_retract)) * (move_length-float(args.min_move)) / (float(args.max_move)-float(args.min_move)) + float(args.min_retract)
+				retract_length = round(retract_length, 1)
 
-		print('retract_length=' + str(retract_length))
-			
-		if args.firmware.casefold() == 'klipper':								# Формирование кода для прошивки Klipper
-			new_line = "SET_RETRACTION RETRACT_LENGTH={retract_extra+" + str(retract_length) + "} ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
+			print('retract_length=' + str(retract_length))
+				
+			if args.firmware.casefold() == 'klipper':								# Формирование кода для прошивки Klipper
+				new_line = "SET_RETRACTION RETRACT_LENGTH={retract_extra+" + str(retract_length) + "} ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
 
-		elif args.firmware.casefold() == 'lerdge':									# Формирование кода для прошивки Lerdge
-			new_line = "M207 S" + str(retract_length) + " ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
-			new_line += "M208 S" + str(retract_length) + " ; Параметр возврата\n"
+			elif args.firmware.casefold() == 'lerdge':									# Формирование кода для прошивки Lerdge
+				new_line = "M207 S" + str(retract_length) + " ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
+				new_line += "M208 S" + str(retract_length) + " ; Параметр возврата\n"
 
-		elif args.firmware.casefold() == 'rrf':									# Формирование кода для прошивки Lerdge
-			new_line = "M207 S{var.retract_extra+" + str(retract_length) + "} ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
-			
-		else:																					# Формирование кода для других прошивок
-			new_line = "M207 S" + str(retract_length) + " ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
+			elif args.firmware.casefold() == 'rrf':									# Формирование кода для прошивки Lerdge
+				new_line = "M207 S{var.retract_extra+" + str(retract_length) + "} ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
+				
+			else:																					# Формирование кода для других прошивок
+				new_line = "M207 S" + str(retract_length) + " ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
 
-		print(new_line)
-		lines[index_line] = new_line + line											# Замена строки
+			print(new_line)
+			lines[index_line] = new_line + line											# Замена строки
 
 	index_line += 1																		# Увеличение счётчика строк
 
