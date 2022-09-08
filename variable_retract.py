@@ -42,7 +42,7 @@ parser.add_argument('--min_retract', default='0.5', help='Минимальная
 parser.add_argument('--min_move', default='5', help='До какого перемещения задавать минимальный ретракт, мм')
 parser.add_argument('--max_retract', default='1.5', help='Максимальная длина ретракта, мм')
 parser.add_argument('--max_move', default='200', help='От какого перемещения задавать максимальный ретракт, мм')
-parser.add_argument('--firmware', default='marlin', help='Указать тип прошивки: klipper, lerdge или marlin')
+parser.add_argument('--firmware', default='marlin', help='Указать тип прошивки: klipper, lerdge, marlin, rrf')
 parser.add_argument('file', help="Путь к g-коду", nargs="+")
 args = parser.parse_args()
 
@@ -111,13 +111,16 @@ for line in lines:																		# Обработка списка из ст�
 
 		print('retract_length=' + str(retract_length))
 			
-		if args.firmware.casefold() == 'lerdge':									# Формирование кода для прошивки Lerdge
+		if args.firmware.casefold() == 'klipper':								# Формирование кода для прошивки Klipper
+			new_line = "SET_RETRACTION RETRACT_LENGTH={retract_extra+" + str(retract_length) + "} ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
+
+		elif args.firmware.casefold() == 'lerdge':									# Формирование кода для прошивки Lerdge
 			new_line = "M207 S" + str(retract_length) + " ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
 			new_line += "M208 S" + str(retract_length) + " ; Параметр возврата\n"
 
-		elif args.firmware.casefold() == 'klipper':								# Формирование кода для прошивки Klipper
-			new_line = "SET_RETRACTION RETRACT_LENGTH=" + str(retract_length) + " ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
-
+		elif args.firmware.casefold() == 'rrf':									# Формирование кода для прошивки Lerdge
+			new_line = "M207 S{var.retract_extra+" + str(retract_length) + "} ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
+			
 		else:																					# Формирование кода для других прошивок
 			new_line = "M207 S" + str(retract_length) + " ; Ретракт " + str(retract_length) + " мм для перемещения " + str(move_length) + " мм\n"
 
@@ -126,6 +129,17 @@ for line in lines:																		# Обработка списка из ст�
 
 	index_line += 1																		# Увеличение счётчика строк
 
+# ------------------- Вставка начальных параметров ---------------------
+
+if args.firmware.casefold() == 'rrf':
+	new_line = "var retract_extra=0 ; Переменная для изменения ретракта во время печати\n;\n"
+
+elif args.firmware.casefold() == 'klipper':
+	new_line = "{% set retract_extra=0 %} ; Переменная для изменения ретракта во время печати\n;\n"
+
+lines[0] = new_line + lines[0]
+
+# ---------------------- Сохранение результата -------------------------
 
 gcode = ''.join(lines)																	# Объединение строк после обработки
 
