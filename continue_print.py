@@ -98,6 +98,7 @@ for i in range(0,len(lines)):															# Обработка списка и
 			print(str(i) + ' layer ' + str(layer_num))
 			flag_comment = True
 		else:
+			flag_comment = False
 			break
 	
 	if args.from_height \
@@ -112,13 +113,14 @@ for i in range(0,len(lines)):															# Обработка списка и
 			print(str(i) + ' height ' + str(height))
 			flag_comment = True
 		else:
+			flag_comment = False
 			break
-	
+
 	if flag_comment:
 		if lines[i][0] != ';':
 			lines[i] = ';' + lines[i]
 
-	if flag_start and re.search(r'^(G0|G1)(.*)Z', lines[i]):
+	if flag_start and re.search(r'^(G0|G1)(.*)Z', lines[i]):					# Поиск и комментирование строк перемещений Z в стартовом коде
 		line = lines[i]
 		try:
 			height = float(line[line.find('Z')+1:].split(' ')[0])
@@ -132,6 +134,14 @@ for i in range(0,len(lines)):															# Обработка списка и
 
 	i += 1																					# Увеличение счётчика строк
 
+lines[i] += 'G0 E50 F300\n'															# Выдавить 50 мм филамента
+lines[i] += 'G10\n'																		# Ретракт
+
+for j in range(i,len(lines)):
+	if re.search(r'^(G0|G1)(.*)E', lines[j]):
+		lines[j] = 'G11\n' + lines[j]
+		break
+	
 # ---------------------- Сохранение результата -------------------------
 
 gcode = ''.join(lines)																	# Объединение строк после обработки
